@@ -30,12 +30,12 @@ jobs:
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Extract project
-        run: unzip MDBStandaloneModMenu_Project.zip -d project
+        run: unzip Mdb-Mod-Menu-apk_Project.zip -d project
 
       - name: Install RED BABOON menu
         run: |
-          cat > project/MDBStandaloneModMenu/app/src/main/java/com/mdb/standalone/MainActivity.kt <<'EOF'
-          package com.mdb.standalone
+          cat > project/MDB-Mod-Menu-apk/app/src/main/java/com/mdb/standalone/MainActivity.kt <<'EOF'
+          package com.mdb.Menu.Baboon
 
           import android.app.Activity
           import android.os.Bundle
