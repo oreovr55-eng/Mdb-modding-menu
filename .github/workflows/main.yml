@@ -1,3 +1,4 @@
+
 name: Build MDB APK
 
 on:
@@ -31,26 +32,37 @@ jobs:
       - name: Extract project
         run: unzip MDBStandaloneModMenu_Project.zip -d project
 
-      - name: Set Java and Kotlin targets to 17
+      - name: Fix app Java and Kotlin versions
         run: |
-          cat > force-java17.init.gradle <<'EOF'
-          allprojects {
-              tasks.withType(org.gradle.api.tasks.compile.JavaCompile).configureEach {
-                  sourceCompatibility = '17'
-                  targetCompatibility = '17'
-              }
-              tasks.configureEach { task ->
-                  if (task.hasProperty('kotlinOptions')) {
-                      task.kotlinOptions.jvmTarget = '17'
-                  }
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("project/MDBStandaloneModMenu/app/build.gradle")
+          s = p.read_text()
+
+          s += """
+
+          // Force Java and Kotlin to use the same JVM target.
+          android {
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
               }
           }
-          EOF
+
+          tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+              kotlinOptions.jvmTarget = "17"
+          }
+          """
+
+          p.write_text(s)
+          print("Java and Kotlin targets set to 17.")
+          PY
 
       - name: Build APK
         run: |
           cd project/MDBStandaloneModMenu
-          gradle -I "$GITHUB_WORKSPACE/force-java17.init.gradle" assembleDebug --stacktrace
+          gradle assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
