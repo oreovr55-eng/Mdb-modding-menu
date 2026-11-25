@@ -1,4 +1,5 @@
-name: Build MDB APK
+```yaml
+name: Build Red Baboon Menu
 
 on:
   workflow_dispatch:
@@ -15,15 +16,15 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.9
+          gradle-version: '8.9'
 
       - name: Setup Android
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install Android SDK
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
@@ -31,13 +32,50 @@ jobs:
       - name: Extract project
         run: unzip MDBStandaloneModMenu_Project.zip -d project
 
-      - name: Build APK
+      - name: Install RED BABOON menu
         run: |
-          cd project/MDBStandaloneModMenu
-          gradle assembleDebug
+          cat > project/MDBStandaloneModMenu/app/src/main/java/com/mdb/standalone/MainActivity.kt <<'EOF'
+          package com.mdb.standalone
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: MDB-Mod-Menu-APK
-          path: project/MDBStandaloneModMenu/app/build/outputs/apk/debug/*.apk
+          import android.app.Activity
+          import android.os.Bundle
+          import android.graphics.Color
+          import android.graphics.Typeface
+          import android.graphics.drawable.GradientDrawable
+          import android.view.Gravity
+          import android.view.View
+          import android.widget.LinearLayout
+          import android.widget.ScrollView
+          import android.widget.TextView
+
+          class MainActivity : Activity() {
+
+              private lateinit var menu: LinearLayout
+              private lateinit var status: TextView
+
+              private val features = linkedMapOf(
+                  "FLY" to false,
+                  "SPEED BOOST" to false,
+                  "SUPER JUMP" to false,
+                  "GHOST MODE" to false,
+                  "NIGHT VISION" to false,
+                  "SCARY MODE" to false
+              )
+
+              private fun dp(v: Int) =
+                  (v * resources.displayMetrics.density).toInt()
+
+              private fun label(
+                  textValue: String,
+                  size: Float,
+                  color: Int,
+                  bold: Boolean = false
+              ) = TextView(this).apply {
+                  text = textValue
+                  textSize = size
+                  setTextColor(color)
+                  if (bold) setTypeface(typeface, Typeface.BOLD)
+              }
+
+              private fun panel() = GradientDrawable().apply {
+                  set
