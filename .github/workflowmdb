@@ -1,6 +1,42 @@
+name: Build MDB Mod Menu APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download project
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK
+        run: |
+          sdkmanager --licenses
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
       - name: Fix Java and Kotlin versions
         run: |
-          cat > project/MDBStandaloneModMenu/app/build.gradle <<'EOF'
+          GRADLE_FILE=$(find . -path "*/app/build.gradle" -print -quit)
+          if [ -z "$GRADLE_FILE" ]; then
+            echo "Could not find app/build.gradle"
+            exit 1
+          fi
+
+          cat > "$GRADLE_FILE" <<'EOF'
           plugins {
               id 'com.android.application'
               id 'org.jetbrains.kotlin.android'
@@ -10,6 +46,14 @@
               namespace 'com.mdb.standalone'
               compileSdk 35
 
+              defaultConfig {
+                  applicationId 'com.mdb.standalone'
+                  minSdk 23
+                  targetSdk 35
+                  versionCode 1
+                  versionName '1.0'
+              }
+
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
@@ -18,13 +62,15 @@
               kotlinOptions {
                   jvmTarget = '17'
               }
-
-              defaultConfig {
-                  applicationId 'com.mdb.standalone'
-                  minSdk 26
-                  targetSdk 32
-                  versionCode 1
-                  versionName '1.0'
-              }
           }
           EOF
+
+      - name: Build APK
+        run: gradle assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MDB-Mod-Menu-APK
+          path: "**/build/outputs/apk/debug/*.apk"
+          if-no-files-found: error
