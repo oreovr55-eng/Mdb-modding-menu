@@ -1,3 +1,4 @@
+
 name: Build MDB Mod Menu APK
 
 on:
@@ -11,66 +12,70 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download project
+      - name: Get project
         uses: actions/checkout@v4
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
 
-      - name: Set up Android
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Install Android SDK
+      - name: Install Android SDK packages
         run: |
           sdkmanager --licenses
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Fix Java and Kotlin versions
+      - name: Extract Android project
         run: |
-          GRADLE_FILE=$(find . -path "*/app/build.gradle" -print -quit)
-          if [ -z "$GRADLE_FILE" ]; then
-            echo "Could not find app/build.gradle"
+          ZIP_FILE=$(find . -maxdepth 3 -name "MDBStandaloneModMenu_Project.zip" -print -quit)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "Project ZIP not found!"
             exit 1
           fi
 
-          cat > "$GRADLE_FILE" <<'EOF'
-          plugins {
-              id 'com.android.application'
-              id 'org.jetbrains.kotlin.android'
-          }
+          mkdir -p unpacked
+          unzip -o "$ZIP_FILE" -d unpacked
 
-          android {
-              namespace 'com.mdb.standalone'
-              compileSdk 35
+          PROJECT_FILE=$(find unpacked -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -print -quit)
 
-              defaultConfig {
-                  applicationId 'com.mdb.standalone'
-                  minSdk 23
-                  targetSdk 35
-                  versionCode 1
-                  versionName '1.0'
+          if [ -z "$PROJECT_FILE" ]; then
+            echo "Could not find Gradle project settings!"
+            exit 1
+          fi
+
+          echo "PROJECT_DIR=$(dirname "$PROJECT_FILE")" >> "$GITHUB_ENV"
+
+      - name: Force Java and Kotlin to version 17
+        run: |
+          cat > force-java17.init.gradle <<'EOF'
+          allprojects {
+              tasks.withType(org.gradle.api.tasks.compile.JavaCompile).configureEach {
+                  sourceCompatibility = '17'
+                  targetCompatibility = '17'
               }
 
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-
-              kotlinOptions {
-                  jvmTarget = '17'
+              tasks.configureEach { task ->
+                  if (task.name.toLowerCase().contains('kotlin')) {
+                      if (task.hasProperty('kotlinOptions')) {
+                          task.kotlinOptions.jvmTarget = '17'
+                      }
+                  }
               }
           }
           EOF
 
       - name: Build APK
-        run: gradle assembleDebug --stacktrace
+        run: |
+          gradle -p "$PROJECT_DIR" -I force-java17.init.gradle assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: MDB-Mod-Menu-APK
-          path: "**/build/outputs/apk/debug/*.apk"
+          path: unpacked/**/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
