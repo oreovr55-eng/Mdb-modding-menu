@@ -1,4 +1,3 @@
-
 name: Build MDB APK
 
 on:
@@ -32,17 +31,127 @@ jobs:
       - name: Extract project
         run: unzip MDBStandaloneModMenu_Project.zip -d project
 
-      - name: Fix app Java and Kotlin versions
+      - name: Fix Kotlin source
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
+          cat > project/MDBStandaloneModMenu/app/src/main/java/com/mdb/standalone/MainActivity.kt <<'EOF'
+          package com.mdb.standalone
 
-          p = Path("project/MDBStandaloneModMenu/app/build.gradle")
-          s = p.read_text()
+          import android.app.Activity
+          import android.os.Bundle
+          import android.view.Gravity
+          import android.view.KeyEvent
+          import android.view.View
+          import android.widget.Button
+          import android.widget.LinearLayout
+          import android.widget.ScrollView
+          import android.widget.TextView
 
-          s += """
+          class MainActivity : Activity() {
+              private lateinit var panel: LinearLayout
+              private lateinit var hint: TextView
+              private var menuOpen = true
+              private val states = linkedMapOf("FLY" to false, "SPEED" to false, "GHOST" to false)
 
-          // Force Java and Kotlin to use the same JVM target.
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  buildMenu()
+              }
+
+              private fun buildMenu() {
+                  val page = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      gravity = Gravity.CENTER
+                      setPadding(28, 20, 28, 20)
+                      setBackgroundColor(0xFF090909.toInt())
+                  }
+
+                  val title = TextView(this).apply {
+                      text = "MDB  •  MOD MENU"
+                      textSize = 28f
+                      setTextColor(0xFFFF3030.toInt())
+                      gravity = Gravity.CENTER
+                      setPadding(8, 8, 8, 8)
+                  }
+                  page.addView(title)
+
+                  hint = TextView(this).apply {
+                      text = "Standalone demo • Press controller X to hide/show"
+                      textSize = 14f
+                      setTextColor(0xFFDDDDDD.toInt())
+                      gravity = Gravity.CENTER
+                      setPadding(8, 4, 8, 18)
+                  }
+                  page.addView(hint)
+
+                  panel = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      setPadding(16, 12, 16, 12)
+                      setBackgroundColor(0xFF191919.toInt())
+                  }
+
+                  states.keys.forEach { feature ->
+                      val button = Button(this)
+                      button.text = "$feature: OFF"
+                      button.textSize = 18f
+                      button.setTextColor(0xFFFFFFFF.toInt())
+                      button.setBackgroundTintList(
+                          android.content.res.ColorStateList.valueOf(0xFFB51F2A.toInt())
+                      )
+                      button.setOnClickListener {
+                          val enabled = !(states[feature] ?: false)
+                          states[feature] = enabled
+                          button.text = "$feature: ${if (enabled) "ON" else "OFF"}"
+                          hint.text = "$feature changed • Demo toggle only"
+                      }
+                      panel.addView(button, LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT,
+                          LinearLayout.LayoutParams.WRAP_CONTENT
+                      ).apply { bottomMargin = 8 })
+                  }
+
+                  val close = Button(this).apply {
+                      text = "CLOSE MENU"
+                      setOnClickListener { setMenuVisible(false) }
+                  }
+                  panel.addView(close)
+
+                  page.addView(panel, LinearLayout.LayoutParams(
+                      520,
+                      LinearLayout.LayoutParams.WRAP_CONTENT
+                  ))
+
+                  val scroll = ScrollView(this)
+                  scroll.addView(page)
+                  setContentView(scroll)
+              }
+
+              private fun setMenuVisible(visible: Boolean) {
+                  menuOpen = visible
+                  panel.visibility = if (visible) View.VISIBLE else View.GONE
+                  hint.text = if (visible) {
+                      "Press controller X to hide/show"
+                  } else {
+                      "Menu hidden • Press controller X to reopen"
+                  }
+              }
+
+              override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+                  if (event.action == KeyEvent.ACTION_DOWN &&
+                      event.repeatCount == 0 &&
+                      event.keyCode == KeyEvent.KEYCODE_BUTTON_X
+                  ) {
+                      setMenuVisible(!menuOpen)
+                      return true
+                  }
+                  return super.dispatchKeyEvent(event)
+              }
+          }
+          EOF
+
+      - name: Set Java and Kotlin targets to 17
+        run: |
+          cat >> project/MDBStandaloneModMenu/app/build.gradle <<'EOF'
+
           android {
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -53,11 +162,7 @@ jobs:
           tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
               kotlinOptions.jvmTarget = "17"
           }
-          """
-
-          p.write_text(s)
-          print("Java and Kotlin targets set to 17.")
-          PY
+          EOF
 
       - name: Build APK
         run: |
