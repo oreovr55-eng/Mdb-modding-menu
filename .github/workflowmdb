@@ -1,4 +1,6 @@
-name: Build MDB APK
+
+```yaml
+name: Build Red Baboon Menu
 
 on:
   workflow_dispatch:
@@ -31,7 +33,7 @@ jobs:
       - name: Extract project
         run: unzip MDBStandaloneModMenu_Project.zip -d project
 
-      - name: Install MDB menu
+      - name: Install RED BABOON menu
         run: |
           cat > project/MDBStandaloneModMenu/app/src/main/java/com/mdb/standalone/MainActivity.kt <<'EOF'
           package com.mdb.standalone
@@ -42,227 +44,39 @@ jobs:
           import android.graphics.Typeface
           import android.graphics.drawable.GradientDrawable
           import android.view.Gravity
-          import android.view.KeyEvent
           import android.view.View
           import android.widget.LinearLayout
           import android.widget.ScrollView
           import android.widget.TextView
 
           class MainActivity : Activity() {
+
               private lateinit var menu: LinearLayout
               private lateinit var status: TextView
-              private var menuOpen = true
-              private val states = linkedMapOf("FLY" to false, "SPEED" to false, "GHOST" to false)
 
-              private fun dp(value: Int): Int =
-                  (value * resources.displayMetrics.density).toInt()
+              private val features = linkedMapOf(
+                  "FLY" to false,
+                  "SPEED BOOST" to false,
+                  "SUPER JUMP" to false,
+                  "GHOST MODE" to false,
+                  "NIGHT VISION" to false,
+                  "SCARY MODE" to false
+              )
 
-              private fun shape(color: Int, stroke: Int = 0, radius: Int = 18): GradientDrawable =
-                  GradientDrawable().apply {
-                      setColor(color)
-                      cornerRadius = dp(radius).toFloat()
-                      if (stroke != 0) setStroke(dp(1), stroke)
-                  }
+              private fun dp(v: Int) =
+                  (v * resources.displayMetrics.density).toInt()
 
-              private fun label(value: String, size: Float, color: Int, bold: Boolean = false) =
-                  TextView(this).apply {
-                      text = value
-                      textSize = size
-                      setTextColor(color)
-                      if (bold) setTypeface(typeface, Typeface.BOLD)
-                  }
-
-              override fun onCreate(savedInstanceState: Bundle?) {
-                  super.onCreate(savedInstanceState)
-                  window.statusBarColor = Color.rgb(9, 9, 11)
-                  window.navigationBarColor = Color.rgb(9, 9, 11)
-                  buildMenu()
+              private fun label(
+                  textValue: String,
+                  size: Float,
+                  color: Int,
+                  bold: Boolean = false
+              ) = TextView(this).apply {
+                  text = textValue
+                  textSize = size
+                  setTextColor(color)
+                  if (bold) setTypeface(typeface, Typeface.BOLD)
               }
 
-              private fun buildMenu() {
-                  val page = LinearLayout(this).apply {
-                      orientation = LinearLayout.VERTICAL
-                      setPadding(dp(18), dp(18), dp(18), dp(22))
-                      setBackgroundColor(Color.rgb(9, 9, 11))
-                  }
-
-                  val brand = LinearLayout(this).apply {
-                      orientation = LinearLayout.VERTICAL
-                      gravity = Gravity.CENTER
-                      setPadding(dp(10), dp(16), dp(10), dp(18))
-                  }
-
-                  brand.addView(label("MDB", 38f, Color.rgb(255, 55, 65), true).apply {
-                      gravity = Gravity.CENTER
-                  })
-
-                  brand.addView(label("MOD MENU  •  QUEST EDITION", 12f, Color.LTGRAY, true).apply {
-                      gravity = Gravity.CENTER
-                  })
-
-                  page.addView(brand)
-
-                  val profile = LinearLayout(this).apply {
-                      orientation = LinearLayout.VERTICAL
-                      setPadding(dp(16), dp(14), dp(16), dp(14))
-                      background = shape(Color.rgb(27, 19, 21), Color.rgb(126, 35, 43))
-                  }
-
-                  profile.addView(label("GAME PROFILE", 11f, Color.rgb(255, 105, 112), true))
-                  profile.addView(label("PROJECT SNAKES", 20f, Color.WHITE, true).apply {
-                      setPadding(0, dp(5), 0, dp(3))
-                  })
-                  profile.addView(label("Demo profile • Not connected to game", 12f, Color.LTGRAY))
-
-                  page.addView(profile)
-
-                  status = label("●  MENU READY  •  DEMO CONTROLS", 12f, Color.rgb(255, 100, 108), true)
-                  status.gravity = Gravity.CENTER
-                  status.setPadding(0, dp(16), 0, dp(14))
-                  page.addView(status)
-
-                  menu = LinearLayout(this).apply {
-                      orientation = LinearLayout.VERTICAL
-                      setPadding(dp(12), dp(12), dp(12), dp(12))
-                      background = shape(Color.rgb(20, 20, 24), Color.rgb(55, 55, 62))
-                  }
-
-                  page.addView(menu)
-                  rebuildFeatures()
-
-                  page.addView(label("CONTROLLER: X  •  HIDE / SHOW MENU", 11f, Color.GRAY, true).apply {
-                      gravity = Gravity.CENTER
-                      setPadding(0, dp(16), 0, dp(4))
-                  })
-
-                  val scroll = ScrollView(this).apply {
-                      isFillViewport = true
-                      setBackgroundColor(Color.rgb(9, 9, 11))
-                      addView(page)
-                  }
-
-                  setContentView(scroll)
-              }
-
-              private fun addFeatureRow(feature: String) {
-                  val enabled = states[feature] == true
-
-                  val row = LinearLayout(this).apply {
-                      orientation = LinearLayout.HORIZONTAL
-                      gravity = Gravity.CENTER_VERTICAL
-                      setPadding(dp(12), dp(12), dp(12), dp(12))
-                      background = shape(Color.rgb(31, 31, 36), Color.rgb(57, 57, 65), 12)
-                      isClickable = true
-                      isFocusable = true
-                  }
-
-                  val name = LinearLayout(this).apply {
-                      orientation = LinearLayout.VERTICAL
-                  }
-
-                  name.addView(label(feature, 16f, Color.WHITE, true))
-                  name.addView(label("Demo switch only", 11f, Color.GRAY))
-
-                  row.addView(name, LinearLayout.LayoutParams(
-                      0,
-                      LinearLayout.LayoutParams.WRAP_CONTENT,
-                      1f
-                  ))
-
-                  row.addView(label(if (enabled) "ON" else "OFF", 12f, Color.WHITE, true).apply {
-                      gravity = Gravity.CENTER
-                      setPadding(dp(17), dp(8), dp(17), dp(8))
-                      background = shape(
-                          if (enabled) Color.rgb(190, 35, 47) else Color.rgb(65, 65, 72),
-                          if (enabled) Color.rgb(255, 80, 90) else Color.rgb(85, 85, 92),
-                          20
-                      )
-                  })
-
-                  row.setOnClickListener {
-                      states[feature] = !(states[feature] ?: false)
-                      rebuildFeatures()
-                      status.text = "●  $feature DEMO SWITCH " +
-                          if (states[feature] == true) "ON" else "OFF"
-                  }
-
-                  menu.addView(row, LinearLayout.LayoutParams(
-                      LinearLayout.LayoutParams.MATCH_PARENT,
-                      LinearLayout.LayoutParams.WRAP_CONTENT
-                  ).apply {
-                      bottomMargin = dp(9)
-                  })
-              }
-
-              private fun rebuildFeatures() {
-                  menu.removeAllViews()
-
-                  menu.addView(label("FEATURES", 13f, Color.LTGRAY, true))
-
-                  states.keys.forEach { addFeatureRow(it) }
-
-                  menu.addView(label("RESET ALL", 14f, Color.WHITE, true).apply {
-                      gravity = Gravity.CENTER
-                      setPadding(dp(12), dp(13), dp(12), dp(13))
-                      background = shape(Color.rgb(75, 29, 34), Color.rgb(155, 49, 57), 12)
-                      isClickable = true
-
-                      setOnClickListener {
-                          states.keys.forEach { states[it] = false }
-                          rebuildFeatures()
-                          status.text = "●  ALL DEMO SWITCHES RESET"
-                      }
-                  })
-              }
-
-              private fun setMenuVisible(visible: Boolean) {
-                  menuOpen = visible
-                  menu.visibility = if (visible) View.VISIBLE else View.GONE
-                  status.text = if (visible) {
-                      "●  MENU READY  •  DEMO CONTROLS"
-                  } else {
-                      "●  MENU HIDDEN  •  PRESS X TO REOPEN"
-                  }
-              }
-
-              override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-                  if (event.action == KeyEvent.ACTION_DOWN &&
-                      event.repeatCount == 0 &&
-                      event.keyCode == KeyEvent.KEYCODE_BUTTON_X
-                  ) {
-                      setMenuVisible(!menuOpen)
-                      return true
-                  }
-
-                  return super.dispatchKeyEvent(event)
-              }
-          }
-          EOF
-
-      - name: Set Java and Kotlin targets to 17
-        run: |
-          cat >> project/MDBStandaloneModMenu/app/build.gradle <<'EOF'
-
-          android {
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-          }
-
-          tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-              kotlinOptions.jvmTarget = "17"
-          }
-          EOF
-
-      - name: Build APK
-        run: |
-          cd project/MDBStandaloneModMenu
-          gradle assembleDebug --stacktrace
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: MDB-Mod-Menu-APK
-          path: project/MDBStandaloneModMenu/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+              private fun panel() = GradientDrawable().apply {
+                  set
