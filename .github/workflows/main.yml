@@ -15,12 +15,12 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.9
+          gradle-version: '8.9'
 
       - name: Setup Android
         uses: android-actions/setup-android@v4
@@ -31,13 +31,30 @@ jobs:
       - name: Extract project
         run: unzip MDBStandaloneModMenu_Project.zip -d project
 
+      - name: Set Java and Kotlin targets to 17
+        run: |
+          cat > force-java17.init.gradle <<'EOF'
+          allprojects {
+              tasks.withType(org.gradle.api.tasks.compile.JavaCompile).configureEach {
+                  sourceCompatibility = '17'
+                  targetCompatibility = '17'
+              }
+              tasks.configureEach { task ->
+                  if (task.hasProperty('kotlinOptions')) {
+                      task.kotlinOptions.jvmTarget = '17'
+                  }
+              }
+          }
+          EOF
+
       - name: Build APK
         run: |
           cd project/MDBStandaloneModMenu
-          gradle assembleDebug
+          gradle -I "$GITHUB_WORKSPACE/force-java17.init.gradle" assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: MDB-Mod-Menu-APK
           path: project/MDBStandaloneModMenu/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
