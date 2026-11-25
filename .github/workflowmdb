@@ -1,67 +1,30 @@
-name: Build MDB APK
-
-on:
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download project
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.9
-
-      - name: Setup Android
-        uses: android-actions/setup-android@v4
-
-      - name: Install Android SDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-.   
-      - name: Extract project
-        run: unzip MDBStandaloneModMenu_Project.zip -d project
-
-.             - name: Fix Java and Kotlin versions
+      - name: Fix Java and Kotlin versions
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
+          cat > project/MDBStandaloneModMenu/app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
 
-          p = Path("project/MDBStandaloneModMenu/app/build.gradle")
-          s = p.read_text()
+          android {
+              namespace 'com.mdb.standalone'
+              compileSdk 35
 
-          s = s.replace(
-              "    defaultConfig {",
-              """    compileOptions {
+              compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
               }
+
               kotlinOptions {
                   jvmTarget = '17'
               }
-              defaultConfig {"""
-          )
 
-          p.write_text(s)
-          PY
-
-
-      - name: Build APK
-        run: |
-          cd project/MDBStandaloneModMenu
-          gradle assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: MDB-Mod-Menu-APK
-          path: project/MDBStandaloneModMenu/app/build/outputs/apk/debug/*.apk
+              defaultConfig {
+                  applicationId 'com.mdb.standalone'
+                  minSdk 26
+                  targetSdk 32
+                  versionCode 1
+                  versionName '1.0'
+              }
+          }
+          EOF
